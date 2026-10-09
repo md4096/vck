@@ -47,6 +47,7 @@ import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.openid.decodeFromQuery
 import at.asitplus.openid.truncateToSeconds
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JweEncrypted
@@ -71,8 +72,14 @@ import at.asitplus.wallet.lib.jws.JwsHeaderIdentifierFun
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.SignJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.oidvci.OpenId4VciServer.CredentialResponse
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception.*
+import at.asitplus.wallet.lib.oidvci.OpenId4VciServer.CredentialResponse
+import at.asitplus.wallet.lib.validation.CredentialValidationContext
+import at.asitplus.wallet.lib.validation.CredentialValidationInput
+import at.asitplus.wallet.lib.validation.CredentialValidationResult
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.HolderBindingPolicy
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -138,7 +145,12 @@ class OpenId4VciClient @JvmOverloads constructor(
      */
     private val selectProofJwtKeyBinding: (suspend (KeyMaterial) -> Pair<JsonWebKey?, String?>) = { key ->
         Pair(key.jsonWebKey, null)
-    }
+    },
+    /**
+     * Validates the credentials of a response in [validateCredentialResponse]: configure it with the trust anchors
+     * per credential type and the status list token resolver.
+     */
+    private val credentialValidator: CredentialValidator = CredentialValidator(),
 ) {
 
     private val defaultClientId = clientId
@@ -464,14 +476,86 @@ class OpenId4VciClient @JvmOverloads constructor(
         representation: CredentialRepresentation,
         scheme: CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
+        decryptCredentialResponse(response, isEncrypted, request)
+            .extractCredentials().map { it.toStoreCredentialInput(representation, scheme) }
+    }
+
+    /**
+     * Parses a response like [parseCredentialResponse], and validates every credential in it with
+     * [credentialValidator] under [policy], bound to [keyMaterial], whose possession the request proved, and of the
+     * type of [scheme] in [representation]. Results in one [CredentialValidationResult] per credential, also for one
+     * that can not be decoded, so that no rejected member of a batch goes unnoticed. Fails only for the response
+     * itself, e.g. if its encryption does not match [request] or it can not be decrypted.
+     */
+    suspend fun validateCredentialResponse(
+        response: String,
+        isEncrypted: Boolean,
+        request: CredentialRequest,
+        representation: CredentialRepresentation,
+        scheme: CredentialScheme,
+        policy: ValidationPolicy,
+    ): KmmResult<List<CredentialValidationResult>> = catching {
+        validateCredentials(
+            response = decryptCredentialResponse(response, isEncrypted, request),
+            representation = representation,
+            scheme = scheme,
+            policy = policy
+        )
+    }
+
+    /** Validates every credential of [response], see [validateCredentialResponse]. */
+    suspend fun validateCredentialResponse(
+        response: CredentialResponse,
+        request: CredentialRequest,
+        representation: CredentialRepresentation,
+        scheme: CredentialScheme,
+        policy: ValidationPolicy,
+    ): KmmResult<List<CredentialValidationResult>> = catching {
+        validateCredentials(
+            response = decryptCredentialResponse(response, request),
+            representation = representation,
+            scheme = scheme,
+            policy = policy
+        )
+    }
+
+    private suspend fun validateCredentials(
+        response: CredentialResponseParameters,
+        representation: CredentialRepresentation,
+        scheme: CredentialScheme,
+        policy: ValidationPolicy,
+    ): List<CredentialValidationResult> {
+        val identifier = when (representation) {
+            PLAIN_JWT -> (scheme as? VcJwtCredentialScheme)?.vcType
+            SD_JWT -> (scheme as? SdJwtCredentialScheme)?.sdJwtType
+            ISO_MDOC -> (scheme as? IsoMdocCredentialScheme)?.isoDocType
+        } ?: throw IllegalArgumentException("Scheme $scheme does not support $representation")
+        val context = CredentialValidationContext(
+            expectedHolderKey = keyMaterial.publicKey,
+            expectedCredentialIdentifier = identifier,
+        )
+        val binding = HolderBindingPolicy.RequireExpectedKey
+        return response.extractCredentials().map { credential ->
+            catchingUnwrapped { credential.toValidationInput(representation) }.fold(
+                onSuccess = { credentialValidator.validate(it, policy, binding, context) },
+                onFailure = { credentialValidator.rejectUndecodable(it, policy, binding) },
+            )
+        }
+    }
+
+    @Throws(Exception::class)
+    private suspend fun decryptCredentialResponse(
+        response: String,
+        isEncrypted: Boolean,
+        request: CredentialRequest,
+    ): CredentialResponseParameters {
         request.validateResponseEncryption(isEncrypted)
-        val responseParameters = if (isEncrypted)
+        return if (isEncrypted)
             encryptionService.decryptToCredentialResponse(
                 response,
                 request.credentialResponseEncryptionKeyId.shouldBePresent(),
             ).getOrThrow()
         else joseCompliantSerializer.decodeFromString<CredentialResponseParameters>(response)
-        responseParameters.extractCredentials().map { it.toStoreCredentialInput(representation, scheme) }
     }
 
     /**
@@ -497,15 +581,23 @@ class OpenId4VciClient @JvmOverloads constructor(
         representation: CredentialRepresentation,
         scheme: CredentialScheme,
     ): KmmResult<Collection<Holder.StoreCredentialInput>> = catching {
-        val isEncrypted = response is CredentialResponse.Encrypted
-        request.validateResponseEncryption(isEncrypted)
-        when (response) {
+        decryptCredentialResponse(response, request)
+            .extractCredentials().map { it.toStoreCredentialInput(representation, scheme) }
+    }
+
+    @Throws(Exception::class)
+    private suspend fun decryptCredentialResponse(
+        response: CredentialResponse,
+        request: CredentialRequest,
+    ): CredentialResponseParameters {
+        request.validateResponseEncryption(response is CredentialResponse.Encrypted)
+        return when (response) {
             is CredentialResponse.Plain -> response.response
             is CredentialResponse.Encrypted -> encryptionService.decryptToCredentialResponse(
                 response.response,
                 request.credentialResponseEncryptionKeyId.shouldBePresent(),
             ).getOrThrow()
-        }.extractCredentials().map { it.toStoreCredentialInput(representation, scheme) }
+        }
     }
 
     private fun CredentialRequest.validateResponseEncryption(isEncrypted: Boolean) {
@@ -669,6 +761,15 @@ class OpenId4VciClient @JvmOverloads constructor(
 
     private val JsonWebKey.jwkThumbprintPlain: String
         get() = jwkThumbprint.removePrefix("urn:ietf:params:oauth:jwk-thumbprint:sha256:")
+
+    /** An mdoc is the base64url encoding of its CBOR-encoded `IssuerSigned` (OpenID4VCI 1.0, A.2.4). */
+    @Throws(Exception::class)
+    private fun String.toValidationInput(representation: CredentialRepresentation): CredentialValidationInput =
+        when (representation) {
+            PLAIN_JWT -> CredentialValidationInput.VcJwt(this)
+            SD_JWT -> CredentialValidationInput.SdJwtVc(this)
+            ISO_MDOC -> CredentialValidationInput.IsoMdoc(decodeToByteArray(Base64UrlStrict))
+        }
 
     @Throws(Exception::class)
     private fun String.toStoreCredentialInput(
