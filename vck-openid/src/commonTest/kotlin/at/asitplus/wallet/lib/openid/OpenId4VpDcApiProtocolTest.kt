@@ -113,6 +113,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                         clientId = "dc-api-rp-${uuid4()}",
                         redirectUri = "https://example.com/callback",
                     ),
+                    presentationPolicy = testPresentationPolicy,
                 )
 
                 /**
@@ -208,6 +209,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     chain = listOf(verifierKeyMaterial.getCertificate()!!),
                     redirectUri = "https://example.com/callback",
                 ),
+                presentationPolicy = testPresentationPolicy,
             )
             val reqOptions = OpenId4VpRequestOptions(
                 presentationRequest = dcqlRequest,
@@ -476,7 +478,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.single().single()
                 .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain
-                    "deviceSignature not matching"
+                    "cryptographically invalid"
             result.validationReport.children.single().checks
                 .shouldBeInstanceOf<PresentationChecks>().signature.shouldBeInstanceOf<CheckOutcome.Failed>()
         }
@@ -511,7 +513,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                 .shouldBeInstanceOf<VpTokenValidationResultDCQL>()
                 .credentialQueryResponseValidations.values.single().single()
                 .exceptionOrNull().shouldNotBeNull().message.shouldNotBeNull() shouldContain
-                    "deviceSignature not matching"
+                    "cryptographically invalid"
         }
 
         test("DC API unsigned: encrypted mdoc response validates, binding the recipient key") { f ->
@@ -524,6 +526,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     chain = listOf(verifierKeyMaterial.getCertificate()!!),
                     redirectUri = "https://example.com/callback",
                 ),
+                presentationPolicy = testPresentationPolicy,
             )
             val transactionId = uuid4().toString()
             val authnRequest = dcApiVerifier.createAuthnRequest(
@@ -581,6 +584,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     chain = listOf(verifierKeyMaterial.getCertificate()!!),
                     redirectUri = "https://example.com/callback",
                 ),
+                presentationPolicy = testPresentationPolicy,
             )
             val transactionId = uuid4().toString()
             dcApiVerifier.createAuthnRequest(
@@ -607,6 +611,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                     chain = listOf(verifierKeyMaterial.getCertificate()!!),
                     redirectUri = "https://example.com/callback",
                 ),
+                presentationPolicy = testPresentationPolicy,
             )
             val transactionId = uuid4().toString()
             val authnRequest = dcApiVerifier.createAuthnRequest(
@@ -652,6 +657,7 @@ val OpenId4VpDcApiProtocolTest by matrixSuite {
                         chain = listOf(verifierKeyMaterial.getCertificate()!!),
                         redirectUri = "https://example.com/callback",
                     ),
+                    presentationPolicy = testPresentationPolicy,
                 )
                 val transactionId = uuid4().toString()
                 val reqOptions = OpenId4VpRequestOptions(
