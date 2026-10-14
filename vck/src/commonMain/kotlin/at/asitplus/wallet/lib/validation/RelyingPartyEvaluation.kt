@@ -312,9 +312,20 @@ internal fun Collection<VerifierInfo>.parseSingleRegistrationCertificate(): JwsC
         ?: throw InvalidRegistrationCertificateException(
             "Request must contain exactly one WRPRC, but contains ${registrationCertificates.size}"
         )
-    return catchingUnwrapped { JwsCompactTyped<WrpPayload>(registrationCertificate.data) }.getOrElse {
+    return catchingUnwrapped {
+        JwsCompactTyped<WrpPayload>(registrationCertificate.registrationCertificateString())
+    }.getOrElse {
         throw InvalidRegistrationCertificateException("Could not parse WRPRC", it)
     }
+}
+
+/**
+ * The `data` of a `registration_cert` element in `verifier_info`, which is given as a string (ETSI TS 119 472-2 V1.3.1
+ * OIDFVP-HAIP-COMMON-REQ-RO-16); fails for object data.
+ */
+internal fun VerifierInfo.registrationCertificateString(): String = when (val data = data) {
+    is VerifierInfo.Data.StringData -> data.value
+    is VerifierInfo.Data.ObjectData -> throw IllegalArgumentException("$format data must be a string, but is an object")
 }
 
 /** The payload of a WRPRC in CWT format, transported as `euWrprc` (ETSI TS 119 475 V1.2.1, 5.2.3). */

@@ -75,6 +75,8 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 val RelyingPartyValidatorTest by matrixSuite {
 
@@ -322,6 +324,24 @@ val RelyingPartyValidatorTest by matrixSuite {
             // the request is authenticated by a trusted WRPAC, so a wallet may continue after warning the user
             report.allNamedChecks().filterNot { it.satisfied }.map { it.name } shouldBe listOf("registration")
             untrustedRegistrations.shouldBeEmpty()
+        }
+    }
+
+    "a WRPRC given as a JSON object fails the registration of a relying party, not its request" {
+        val fixture = buildWrpFixture()
+        val parameters = fixture.parameters(buildWrpPayload(fixture.wrpIdentifier)).copy(
+            verifierInfo = nonEmptyListOf(
+                VerifierInfo(REGISTRATION_CERT_FORMAT, buildJsonObject { put("jwt", "not-a-string-wrprc") })
+            )
+        )
+
+        fixture.validate(fixture.signedByWrp(parameters)).apply {
+            report.decision shouldBe REJECTED
+            report.checks.shouldBeInstanceOf<RelyingPartyChecks>().apply {
+                requestData shouldBe CheckOutcome.Passed
+                registration.shouldBeInstanceOf<CheckOutcome.Failed>().throwable
+                    .shouldBeInstanceOf<InvalidRegistrationCertificateException>()
+            }
         }
     }
 
