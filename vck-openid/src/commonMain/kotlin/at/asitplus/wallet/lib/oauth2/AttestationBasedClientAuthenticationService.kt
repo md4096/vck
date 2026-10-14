@@ -34,6 +34,7 @@ import at.asitplus.wallet.lib.validation.TrustPolicy
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.ValidationReport
 import at.asitplus.wallet.lib.validation.toOutcome
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -134,7 +135,7 @@ class AttestationBasedClientAuthenticationService @JvmOverloads constructor(
      *
      * Fails if [httpRequest] contains no client attestation, or the challenge has been used concurrently.
      */
-    @Throws(OAuth2Exception::class)
+    @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validate(
         httpRequest: RequestInfo?,
         clientId: String?,

@@ -49,6 +49,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -88,7 +89,7 @@ internal class AuthorizationRequestValidator(
      * Validates [request] with [validate] under the checks it has always been validated with, failing with the first
      * rejection. Its relying party certificates are not validated, as they never have been.
      */
-    @Throws(OAuth2Exception::class)
+    @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validateAuthorizationRequest(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ) {
@@ -163,7 +164,7 @@ internal class AuthorizationRequestValidator(
      * Media type, response type and mode, and the parameters of the Digital Credentials API, but not whether the
      * calling origin is expected, see [expectedOrigin].
      */
-    @Throws(OAuth2Exception::class)
+    @Throws(OAuth2Exception::class, CancellationException::class)
     private suspend fun RequestParametersFrom<AuthenticationRequestParameters>.requireWellFormed() {
         (this as? Signed)?.jwsTyped?.jws?.requireRequestObjectType()
         parameters.responseType?.let {

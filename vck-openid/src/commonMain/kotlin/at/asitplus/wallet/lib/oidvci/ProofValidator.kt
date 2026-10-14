@@ -41,6 +41,7 @@ import at.asitplus.wallet.lib.validation.ValidationDecision
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.ValidationReport
 import at.asitplus.wallet.lib.validation.toOutcome
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.jvm.JvmOverloads
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -124,7 +125,7 @@ class ProofValidator @JvmOverloads constructor(
      * Validates the proofs in [params] with [validateProofs] under the checks they have always been validated with,
      * and returns the keys to bind credentials to, failing with the first rejection of a proof.
      */
-    @Throws(OAuth2Exception::class)
+    @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validateProofExtractSubjectPublicKeys(
         params: CredentialRequestParameters,
     ): Collection<CryptoPublicKey> {
@@ -141,7 +142,7 @@ class ProofValidator @JvmOverloads constructor(
      *
      * Fails if [params] contains no proof, or a nonce has been used concurrently.
      */
-    @Throws(OAuth2Exception::class)
+    @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validateProofs(
         params: CredentialRequestParameters,
         policy: ValidationPolicy,
