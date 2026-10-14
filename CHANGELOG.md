@@ -12,6 +12,11 @@ Release 9.0.0 (unreleased):
     - Reject empty required arrays, empty digital identities, null certificate wire entries, missing scheme-operator
       and associated-body website contacts, and timestamps without a four-digit year. Trusted-entity contacts allow
       email without a website. Other `ListAndSchemeInformation` requirements remain unchanged
+    - BREAKING: `WrpClaim.path` is a claims path pointer of `WrpClaimPathSegment`s (a name, `null` for all elements
+      of an array, or an index), and `WrpClaim.values` a list of `WrpClaimValue`s (a string, integer, or boolean), as
+      ETSI TS 119 475 V1.2.1, B.2.10 refers to OpenID4VP for them; `WrpClaim.named(...)` creates a path of names. A
+      WRPRC with `null` or an index in a path could not be parsed before. Registered paths authorize requested claims
+      segment by segment, `null` any index; in the CWT format, segments and values can be strings or `null` only
 - Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
 - Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
 - Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
