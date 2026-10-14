@@ -19,6 +19,14 @@ Release 9.0.0 (unreleased):
       segment by segment, `null` any index; in the CWT format, segments and values can be strings or `null` only
 - Remove code elements deprecated in 8.0.0: Presentation Exchange, module `dif-data-classes` and others
 - Remove deprecated Presentation Exchange types and `dif-data-classes` compatibility surface
+- ISO mdoc data classes:
+    - Encode issuer-signed items with the bytes they were decoded from (`ByteStringWrapper.serialized`) instead of
+      re-encoding their value, so items an issuer encoded differently, e.g. in another key order like the EUDI
+      reference issuer, keep matching their digests (ISO/IEC 18013-5:2021, 9.1.2.5). `serialized` of items from
+      `IssuerSignedList.fromIssuerSignedItems` holds the encoded `IssuerSignedItem` like a decoded item, no longer the
+      tag-24-wrapped `IssuerSignedItemBytes`
+    - Add `IssuerSigned.fromIssuerSignedLists(...)` and `StoreEntry.Iso.discloseIssuedItem(...)`; mdoc presentations
+      disclose items with the bytes they were issued with
 - Validation (package `at.asitplus.wallet.lib.validation` in `vck`):
     - Add `CredentialValidator`, validating credentials (`CredentialValidationInput`) and presentations
       (`PresentationValidationInput` in a `PresentationContext`) under a `ValidationPolicy` (`TrustPolicy`,
