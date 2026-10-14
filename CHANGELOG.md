@@ -17,6 +17,11 @@ Release 9.0.0 (unreleased):
       ETSI TS 119 475 V1.2.1, B.2.10 refers to OpenID4VP for them; `WrpClaim.named(...)` creates a path of names. A
       WRPRC with `null` or an index in a path could not be parsed before. Registered paths authorize requested claims
       segment by segment, `null` any index; in the CWT format, segments and values can be strings or `null` only
+    - BREAKING: `WrpPayload.subjectLegalName`, `.privacyPolicy`, `.infoUri` and `.supportUri`, and
+      `WrpSupervisoryAuthority.email`, `.phone` and `.uri`, are lists of strings (`WrpStringOrArraySerializer`), as
+      ETSI TS 119 475 V1.2.1, B.2.1 to B.2.3 and B.2.7 allow several values: they are decoded from a string or an array,
+      and a single value is encoded as a string, as in Annex C. All but `privacyPolicy` are nullable; `info_uri` is
+      optional, as it is only included if provided by the registry
 - OpenID data classes:
     - BREAKING: `VerifierInfo.data` is a `VerifierInfo.Data` of `StringData` or `ObjectData` instead of `String`, as OpenID4VP 1.0 allows a string or a JSON object. Requests carrying a `verifier_info` with object data, e.g. the `registrar_dataset` of ETSI TS 119 472-2, no longer fail to parse. `VerifierInfo` can still be created with a `String`, or with a `JsonObject`
     - Add `OpenIdConstants.VerifierInfo.REGISTRAR_DATASET_FORMAT` for ETSI TS 119 472-2 RP Registrar-provided data

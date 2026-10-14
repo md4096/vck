@@ -15,9 +15,13 @@ data class WrpPayload(
     @SerialName("name")
     val name: String? = null,
 
-    /** Officially recorded legal name, when the relying party is a legal person (Table 7; clause B.2.3). */
+    /**
+     * Officially recorded legal names, when the relying party is a legal person (Table 7; clause B.2.3). `legalName` is
+     * [1..*] in B.2.3, so this is decoded from a string or an array, see [WrpStringOrArraySerializer].
+     */
     @SerialName("sub_ln")
-    val subjectLegalName: String? = null,
+    @Serializable(with = WrpStringOrArraySerializer::class)
+    val subjectLegalName: List<String>? = null,
 
     /** Officially recorded given names, including middle names, for a natural person (Table 7; clause B.2.4). */
     @SerialName("sub_gn")
@@ -47,17 +51,32 @@ data class WrpPayload(
     @SerialName("entitlements")
     val entitlements: List<String>,
 
-    /** URL of the privacy policy explaining data processing and storage practices (Table 7). */
+    /**
+     * URLs of the privacy policies explaining data processing and storage practices (Table 7; `policyURI` of clause
+     * B.2.8). `privacyPolicy` is [1..*] in B.2.7, so this is decoded from a string or an array, see
+     * [WrpStringOrArraySerializer].
+     */
     @SerialName("privacy_policy")
-    val privacyPolicy: String,
+    @Serializable(with = WrpStringOrArraySerializer::class)
+    val privacyPolicy: List<String>,
 
-    /** General-purpose URL providing public information about the relying party (Table 7; clause B.2.2). */
+    /**
+     * General-purpose URLs providing public information about the relying party (Table 7; clause B.2.2). `infoURI`
+     * is [0..*] in B.2.2, so this is only present if provided by the registry (GEN-5.2.4-01), for legal and natural
+     * persons alike (Tables 1 and 3). Decoded from a string or an array, see [WrpStringOrArraySerializer].
+     */
     @SerialName("info_uri")
-    val infoUri: String,
+    @Serializable(with = WrpStringOrArraySerializer::class)
+    val infoUri: List<String>? = null,
 
-    /** URL or email address for data deletion or portability requests (Table 7). */
+    /**
+     * URLs or email addresses for data deletion or portability requests (Table 7). `supportURI` is [1..*] in B.2.1,
+     * so a valid WRPRC carries at least one; it is optional here to decode WRPRCs that lack it. Decoded from a string
+     * or an array, see [WrpStringOrArraySerializer].
+     */
     @SerialName("support_uri")
-    val supportUri: String? = null,
+    @Serializable(with = WrpStringOrArraySerializer::class)
+    val supportUri: List<String>? = null,
 
     /** Contact details of the competent data protection supervisory authority (Table 7). */
     @SerialName("supervisory_authority")
