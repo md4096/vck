@@ -180,9 +180,8 @@ class HolderAgent private constructor(
         policy: ValidationPolicy,
         renewalInfo: CredentialRenewalInfo? = null,
     ): KmmResult<PreparedCredentialStorage> = catching {
-        val expectedHolderKeys = setOfNotNull(singleKey?.publicKey)
         validate(credential, policy).let {
-            PreparedCredentialStorage(credential, it, renewalInfo, it.boundKey(expectedHolderKeys))
+            PreparedCredentialStorage(credential, it, renewalInfo, it.boundKey())
         }
     }
 
@@ -216,7 +215,7 @@ class HolderAgent private constructor(
             credential = validation.unacceptedCredential?.let { input.toStoreCredentialInput(it, scheme) },
             validation = validation,
             renewalInfo = renewalInfo,
-            holderKey = validation.boundKey(resolvedExpectedHolderKeys),
+            holderKey = validation.boundKey(),
         )
     }
 
@@ -286,13 +285,8 @@ class HolderAgent private constructor(
     }
 
     /** The key of the intact credential, `null` if it isn't intact or isn't holder-bound. */
-    private fun CredentialValidationResult.boundKey(
-        expectedHolderKeys: Set<CryptoPublicKey>,
-    ): CryptoPublicKey? = when (val credential = unacceptedCredential) {
+    private fun CredentialValidationResult.boundKey(): CryptoPublicKey? = when (val credential = unacceptedCredential) {
         is ValidatedCredential.VcJwt -> credential.credential.holderKey()
-            ?: credential.credential.subject?.let { subject ->
-                expectedHolderKeys.firstOrNull { it.matchesIdentifier(subject) }
-            }
         is ValidatedCredential.SdJwtVc -> credential.credential.holderKey()
         is ValidatedCredential.IsoMdoc -> credential.issuerSigned.issuerAuth.payload?.holderKey()
         null -> null
