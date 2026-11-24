@@ -67,6 +67,9 @@ Release 10.0.0 (unreleased):
       `KeyAttestationInput.keys`. New fields change `copy` and `componentN` for `CredentialValidationContext`,
       `ReceivedCredential.Decoded`, `OpenId4VciClient.CredentialRequest.Plain` / `.Encrypted`, and
       `KeyAttestationInput`.
+- Credential issuer:
+    - Reject a credential request whose `proofs` contains more than one proof type with `invalid_credential_request`,
+      as OpenID4VCI 1.0 requires exactly one proof type.
 
 Release 9.0.0:
 
