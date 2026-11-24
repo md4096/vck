@@ -62,10 +62,11 @@ Release 10.0.0 (unreleased):
       `OpenId4VpRequestOptions` refuses to create such requests.
     - OID4VCI proof creators obtain a key for each request, and `ProofCreator.createProof` returns the proofs with that
       key. Received credentials are checked against their request's proof keys. Issuers that do not require binding can
-      store only credentials without a holder key. Deprecate `CredentialValidationContext.expectedHolderKey` in favor
-      of `expectedHolderKeys`; add `KeyAttestationInput.keys`. New fields change `copy` and `componentN` for
-      `CredentialValidationContext`, `ReceivedCredential.Decoded`,
-      `OpenId4VciClient.CredentialRequest.Plain` / `.Encrypted`, and `KeyAttestationInput`.
+      store only credentials without a holder key. Key attestations cover exactly the proof keys supplied to a request.
+      Deprecate `CredentialValidationContext.expectedHolderKey` in favor of `expectedHolderKeys`; add
+      `KeyAttestationInput.keys`. New fields change `copy` and `componentN` for `CredentialValidationContext`,
+      `ReceivedCredential.Decoded`, `OpenId4VciClient.CredentialRequest.Plain` / `.Encrypted`, and
+      `KeyAttestationInput`.
 
 Release 9.0.0:
 
